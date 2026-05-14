@@ -18,6 +18,7 @@ class Utilisateur(Base):
     telephone = Column(Text)
     email = Column(Text)
     role = Column(Text)
+    action = Column(Text)
 
 
 class Monnaie(Base):
@@ -28,6 +29,7 @@ class Monnaie(Base):
     sync = Column(Integer, default=0)
     nom = Column(Text)
     sigle = Column(Text)
+    action = Column(Text)
 
 
 class Client(Base):
@@ -40,6 +42,7 @@ class Client(Base):
     adresse = Column(Text)
     telephone = Column(Text)
     email = Column(Text)
+    action = Column(Text)
 
 
 class Dossier(Base):
@@ -61,6 +64,7 @@ class Dossier(Base):
     montant_convenu = Column(Float)
     statut = Column(Text)
     date_creation = Column(Date, server_default=func.current_date())
+    action = Column(Text)
 
 
 class Conteneur(Base):
@@ -72,6 +76,7 @@ class Conteneur(Base):
     dossier_uuid = Column(Text)
     numero_conteneur = Column(Text)
     dimension = Column(Text)
+    action = Column(Text)
 
 
 class DetailConteneur(Base):
@@ -84,6 +89,7 @@ class DetailConteneur(Base):
     nom_article = Column(Text)
     quantite = Column(Float)
     unite_mesure = Column(Text)
+    action = Column(Text)
 
 
 class Interchange(Base):
@@ -94,6 +100,7 @@ class Interchange(Base):
     sync = Column(Integer, default=0)
     conteneur_uuid = Column(Text)
     scan = Column(LargeBinary)
+    action = Column(Text)
 
 
 class DepotArgent(Base):
@@ -109,6 +116,7 @@ class DepotArgent(Base):
     date_paiement = Column(Date)
     source_uuid = Column(Text)
     agent = Column(Text)
+    action = Column(Text)
 
 
 class Depense(Base):
@@ -125,6 +133,7 @@ class Depense(Base):
     date_validation = Column(Date)
     validateur_uuid = Column(Text)
     monnaie_uuid = Column(Text)
+    action = Column(Text)
 
 
 class Camion(Base):
@@ -137,6 +146,7 @@ class Camion(Base):
     plaque = Column(Text)
     modele = Column(Text)
     capacite = Column(Text)
+    action = Column(Text)
 
 
 class ChauffeurConvoyeur(Base):
@@ -150,6 +160,7 @@ class ChauffeurConvoyeur(Base):
     adresse = Column(Text)
     date_engagement = Column(Date)
     fonction = Column(Text)
+    action = Column(Text)
 
 
 class Voyage(Base):
@@ -168,3 +179,4 @@ class Voyage(Base):
     camion_uuid = Column(Text)
     chauffeur_uuid = Column(Text)
     convoyeur_uuid = Column(Text)
+    action = Column(Text)
