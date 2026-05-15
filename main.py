@@ -1,10 +1,12 @@
 import uuid as uuid_lib
 from contextlib import asynccontextmanager
 from typing import Dict, List, Any
+from datetime import date, datetime
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.responses import Response
 from pydantic import BaseModel
-from sqlalchemy import select, inspect, func
+from sqlalchemy import select, inspect, func, Date as SADate
 
 from database import engine, Base, AsyncSessionLocal
 from models import (
@@ -117,7 +119,13 @@ async def get_data(request: GetDataRequest) -> Dict[str, List[Dict[str, Any]]]:
                 select(model).where(model.sync > entry.sync)
             )
             rows = result.scalars().all()
-            response[entry.table_name] = [row_to_dict(r) for r in rows]
+            if entry.table_name == "interchange":
+                response[entry.table_name] = [
+                    {k: v for k, v in row_to_dict(r).items() if k != "scan"}
+                    for r in rows
+                ]
+            else:
+                response[entry.table_name] = [row_to_dict(r) for r in rows]
 
     return response
 
@@ -145,6 +153,18 @@ async def post_data(request: PostDataRequest) -> List[Dict[str, Any]]:
             sync_val = record.get("sync", 0)
             id_val = record.get("id", 0)
 
+            # Cas spécial : table utilisateurs + nom_utilisateur == "admin"
+            if request.table_name == "utilisateurs" and record.get("nom_utilisateur") == "admin":
+                existing = await session.execute(
+                    select(Utilisateur).where(Utilisateur.nom_utilisateur == "admin")
+                )
+                admin = existing.scalars().first()
+                if admin is not None:
+                    result_record = dict(record)
+                    result_record["new_sync"] = admin.sync
+                    response_records.append(result_record)
+                    continue
+
             action = determine_action(sync_val, id_val)
 
             # Calculer max(sync) + 1
@@ -158,10 +178,26 @@ async def post_data(request: PostDataRequest) -> List[Dict[str, Any]]:
             insert_data = {k: v for k, v in record.items()}
             insert_data["action"] = action
             insert_data["sync"] = new_sync
+            insert_data["id"] = id_val
 
-            # Filtrer uniquement les colonnes du modèle
-            valid_cols = {c.key for c in inspect(model).mapper.column_attrs}
+            # Filtrer uniquement les colonnes du modèle et convertir les dates
+            mapper = inspect(model).mapper
+            valid_cols = {c.key for c in mapper.column_attrs}
+            date_cols = {
+                c.key
+                for c in mapper.columns
+                if isinstance(c.type, SADate)
+            }
             insert_data = {k: v for k, v in insert_data.items() if k in valid_cols}
+            for col in date_cols:
+                val = insert_data.get(col)
+                if isinstance(val, str) and val:
+                    try:
+                        insert_data[col] = datetime.fromisoformat(val).date()
+                    except ValueError:
+                        insert_data[col] = None
+                elif not val:
+                    insert_data[col] = None
 
             instance = model(**insert_data)
             session.add(instance)
@@ -174,3 +210,60 @@ async def post_data(request: PostDataRequest) -> List[Dict[str, Any]]:
         await session.commit()
 
     return response_records
+
+
+@app.get("/get_interchange")
+async def get_interchange(conteneur_uuid: str, sync: int, page: int):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+                select(Interchange).where(
+                    Interchange.conteneur_uuid == conteneur_uuid,
+                    Interchange.sync == sync,
+                    Interchange.page == page,
+                )
+            )
+        row = result.scalars().first()
+
+    if row is None or row.scan is None:
+        raise HTTPException(status_code=404, detail="Aucun enregistrement trouvé")
+
+    nom_fichier = row.nom_fichier or "fichier"
+    return Response(
+        content=row.scan,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{nom_fichier}"'},
+    )
+
+
+@app.post("/post_interchange")
+async def post_interchange(
+    uuid: str = Form(...),
+    id: int = Form(...),
+    sync: int = Form(...),
+    conteneur_uuid: str = Form(...),
+    page: int = Form(...),
+    nom_fichier: str = Form(...),
+    scan: UploadFile = File(...),
+):
+    action = determine_action(sync, id)
+    scan_bytes = await scan.read()
+
+    async with AsyncSessionLocal() as session:
+        max_sync_result = await session.execute(select(func.max(Interchange.sync)))
+        max_sync = max_sync_result.scalar() or 0
+        new_sync = max_sync + 1
+
+        instance = Interchange(
+            uuid=uuid,
+            id=id,
+            sync=new_sync,
+            conteneur_uuid=conteneur_uuid,
+            page=page,
+            nom_fichier=nom_fichier,
+            scan=scan_bytes,
+            action=action,
+        )
+        session.add(instance)
+        await session.commit()
+
+    return {"new_sync": new_sync}

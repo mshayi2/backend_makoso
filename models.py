@@ -8,9 +8,9 @@ from database import Base
 class Utilisateur(Base):
     __tablename__ = "utilisateurs"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     nom_complet = Column(Text)
     nom_utilisateur = Column(Text)
     mot_de_passe = Column(Text)
@@ -24,9 +24,9 @@ class Utilisateur(Base):
 class Monnaie(Base):
     __tablename__ = "monnaies"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     nom = Column(Text)
     sigle = Column(Text)
     action = Column(Text)
@@ -35,9 +35,9 @@ class Monnaie(Base):
 class Client(Base):
     __tablename__ = "clients"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     nom = Column(Text)
     adresse = Column(Text)
     telephone = Column(Text)
@@ -48,9 +48,9 @@ class Client(Base):
 class Dossier(Base):
     __tablename__ = "dossiers"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     client_uuid = Column(Text)
     numero_bl = Column(Text)
     port_chargement = Column(Text)
@@ -70,9 +70,9 @@ class Dossier(Base):
 class Conteneur(Base):
     __tablename__ = "conteneurs"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     dossier_uuid = Column(Text)
     numero_conteneur = Column(Text)
     dimension = Column(Text)
@@ -82,9 +82,9 @@ class Conteneur(Base):
 class DetailConteneur(Base):
     __tablename__ = "detail_conteneurs"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     conteneur_uuid = Column(Text)
     nom_article = Column(Text)
     quantite = Column(Float)
@@ -95,20 +95,22 @@ class DetailConteneur(Base):
 class Interchange(Base):
     __tablename__ = "interchange"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     conteneur_uuid = Column(Text)
     scan = Column(LargeBinary)
+    page = Column(Integer)
+    nom_fichier = Column(Text)
     action = Column(Text)
 
 
 class DepotArgent(Base):
     __tablename__ = "depot_argent"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     monnaie_uuid = Column(Text)
     montant = Column(Float)
     libelle = Column(Text)
@@ -122,9 +124,9 @@ class DepotArgent(Base):
 class Depense(Base):
     __tablename__ = "depenses"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     montant = Column(Float)
     libelle = Column(Text)
     observation = Column(Text)
@@ -139,9 +141,9 @@ class Depense(Base):
 class Camion(Base):
     __tablename__ = "camions"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     marque = Column(Text)
     plaque = Column(Text)
     modele = Column(Text)
@@ -152,9 +154,9 @@ class Camion(Base):
 class ChauffeurConvoyeur(Base):
     __tablename__ = "chauffeurs_convoyeurs"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     nom = Column(Text)
     telephone = Column(Text)
     adresse = Column(Text)
@@ -166,9 +168,9 @@ class ChauffeurConvoyeur(Base):
 class Voyage(Base):
     __tablename__ = "voyages"
 
-    uuid = Column(Text, primary_key=True)
+    uuid = Column(Text)
     id = Column(Integer)
-    sync = Column(Integer, default=0)
+    sync = Column(Integer, primary_key=True)
     numero_voyage = Column(Text)
     date_voyage = Column(Text)
     lieu_depart = Column(Text)
