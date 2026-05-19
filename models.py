@@ -117,7 +117,23 @@ class Interchange(Base):
 
 
 class DepotArgent(Base):
-    __tablename__ = "depot_argent"
+    __tablename__ = "depot_argent_makoso"
+
+    uuid = Column(Text)
+    id = Column(Integer)
+    sync = Column(Integer, primary_key=True)
+    monnaie_uuid = Column(Text)
+    montant = Column(Float)
+    libelle = Column(Text)
+    observation = Column(Text)
+    date_paiement = Column(Date)
+    source_uuid = Column(Text)
+    agent = Column(Text)
+    action = Column(Text)
+
+
+class DepotArgentMarinasTrans(Base):
+    __tablename__ = "depot_argent_marina_trans"
 
     uuid = Column(Text)
     id = Column(Integer)
@@ -133,7 +149,7 @@ class DepotArgent(Base):
 
 
 class Depense(Base):
-    __tablename__ = "depenses"
+    __tablename__ = "depenses_makoso"
 
     uuid = Column(Text)
     id = Column(Integer)
@@ -146,6 +162,25 @@ class Depense(Base):
     date_validation = Column(Date)
     validateur_uuid = Column(Text)
     monnaie_uuid = Column(Text)
+    action = Column(Text)
+
+
+class DepenseMarinasTrans(Base):
+    __tablename__ = "depenses_marina_trans"
+
+    uuid = Column(Text)
+    id = Column(Integer)
+    sync = Column(Integer, primary_key=True)
+    montant = Column(Float)
+    libelle = Column(Text)
+    observation = Column(Text)
+    date = Column(Date)
+    valide = Column(Integer)
+    date_validation = Column(Date)
+    validateur_uuid = Column(Text)
+    monnaie_uuid = Column(Text)
+    type_depense = Column(Text)
+    origine_uuid = Column(Text)
     action = Column(Text)
 
 

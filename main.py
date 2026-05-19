@@ -11,7 +11,8 @@ from sqlalchemy import select, inspect, func, text, Date as SADate
 from database import engine, Base, AsyncSessionLocal
 from models import (
     Monnaie, Utilisateur, Client, Dossier, Conteneur, DetailConteneur,
-    Interchange, DepotArgent, Depense, Camion, ChauffeurConvoyeur, Voyage
+    Interchange, DepotArgent, DepotArgentMarinasTrans,
+    Depense, DepenseMarinasTrans, Camion, ChauffeurConvoyeur, Voyage
 )
 
 TABLE_MAP = {
@@ -22,8 +23,10 @@ TABLE_MAP = {
     "conteneurs": Conteneur,
     "detail_conteneurs": DetailConteneur,
     "interchange": Interchange,
-    "depot_argent": DepotArgent,
-    "depenses": Depense,
+    "depot_argent_makoso": DepotArgent,
+    "depot_argent_marina_trans": DepotArgentMarinasTrans,
+    "depenses_makoso": Depense,
+    "depenses_marina_trans": DepenseMarinasTrans,
     "camions": Camion,
     "chauffeurs_convoyeurs": ChauffeurConvoyeur,
     "voyages": Voyage,
@@ -49,6 +52,55 @@ MONNAIES_INITIALES = [
     ("Dollar Américain", "USD"),
     ("Euro", "EUR"),
 ]
+
+
+async def migrer_depot_argent_et_depenses():
+    async with engine.begin() as conn:
+        def table_exists(sync_conn, table_name):
+            insp = inspect(sync_conn)
+            return table_name in insp.get_table_names()
+
+        # depot_argent → depot_argent_makoso
+        existe_depot = await conn.run_sync(lambda c: table_exists(c, "depot_argent"))
+        if existe_depot:
+            existe_makoso = await conn.run_sync(lambda c: table_exists(c, "depot_argent_makoso"))
+            if not existe_makoso:
+                await conn.execute(text("ALTER TABLE depot_argent RENAME TO depot_argent_makoso"))
+
+        # Créer depot_argent_marina_trans si absent
+        existe_marina = await conn.run_sync(lambda c: table_exists(c, "depot_argent_marina_trans"))
+        if not existe_marina:
+            await conn.execute(text("""
+                CREATE TABLE depot_argent_marina_trans AS
+                SELECT * FROM depot_argent_makoso WHERE 1=0
+            """))
+            await conn.execute(text(
+                "ALTER TABLE depot_argent_marina_trans ADD PRIMARY KEY (sync)"
+            ))
+
+        # depenses → depenses_makoso
+        existe_depenses = await conn.run_sync(lambda c: table_exists(c, "depenses"))
+        if existe_depenses:
+            existe_dep_makoso = await conn.run_sync(lambda c: table_exists(c, "depenses_makoso"))
+            if not existe_dep_makoso:
+                await conn.execute(text("ALTER TABLE depenses RENAME TO depenses_makoso"))
+
+        # Créer depenses_marina_trans si absent
+        existe_dep_marina = await conn.run_sync(lambda c: table_exists(c, "depenses_marina_trans"))
+        if not existe_dep_marina:
+            await conn.execute(text("""
+                CREATE TABLE depenses_marina_trans AS
+                SELECT * FROM depenses_makoso WHERE 1=0
+            """))
+            await conn.execute(text(
+                "ALTER TABLE depenses_marina_trans ADD PRIMARY KEY (sync)"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE depenses_marina_trans ADD COLUMN type_depense TEXT"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE depenses_marina_trans ADD COLUMN origine_uuid TEXT"
+            ))
 
 
 async def migrer_conteneurs():
@@ -107,6 +159,7 @@ async def seeder_monnaies():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await creer_tables()
+    await migrer_depot_argent_et_depenses()
     await migrer_conteneurs()
     await seeder_monnaies()
     yield
