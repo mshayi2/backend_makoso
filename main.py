@@ -54,6 +54,30 @@ MONNAIES_INITIALES = [
 ]
 
 
+async def migrer_clients():
+    async with engine.begin() as conn:
+        def get_columns(sync_conn):
+            insp = inspect(sync_conn)
+            return {col["name"] for col in insp.get_columns("clients")}
+
+        colonnes_existantes = await conn.run_sync(get_columns)
+
+        if "type_client" not in colonnes_existantes:
+            await conn.execute(text("ALTER TABLE clients ADD COLUMN type_client TEXT"))
+
+
+async def migrer_voyages():
+    async with engine.begin() as conn:
+        def get_columns(sync_conn):
+            insp = inspect(sync_conn)
+            return {col["name"] for col in insp.get_columns("voyages")}
+
+        colonnes_existantes = await conn.run_sync(get_columns)
+
+        if "client_uuid" not in colonnes_existantes:
+            await conn.execute(text("ALTER TABLE voyages ADD COLUMN client_uuid TEXT"))
+
+
 async def migrer_depot_argent_et_depenses():
     async with engine.begin() as conn:
         def table_exists(sync_conn, table_name):
@@ -159,6 +183,8 @@ async def seeder_monnaies():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await creer_tables()
+    await migrer_clients()
+    await migrer_voyages()
     await migrer_depot_argent_et_depenses()
     await migrer_conteneurs()
     await seeder_monnaies()
