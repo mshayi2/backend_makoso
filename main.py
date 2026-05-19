@@ -6,7 +6,7 @@ from datetime import date, datetime
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import Response
 from pydantic import BaseModel
-from sqlalchemy import select, inspect, func, Date as SADate
+from sqlalchemy import select, inspect, func, text, Date as SADate
 
 from database import engine, Base, AsyncSessionLocal
 from models import (
@@ -51,6 +51,35 @@ MONNAIES_INITIALES = [
 ]
 
 
+async def migrer_conteneurs():
+    NOUVEAUX_CHAMPS = [
+        ("date_sorti_port", "DATE"),
+        ("nom_transporteur", "TEXT"),
+        ("marque_camion", "TEXT"),
+        ("numero_plaque", "TEXT"),
+        ("nom_chauffeur", "TEXT"),
+        ("numero_chauffeur", "TEXT"),
+        ("lieu_dechargement", "TEXT"),
+        ("date_arriver_lieu_dechargement", "DATE"),
+        ("date_dechargement", "DATE"),
+        ("date_depart_retout_port", "DATE"),
+        ("date_retour_port", "DATE"),
+    ]
+
+    async with engine.begin() as conn:
+        def get_columns(sync_conn):
+            insp = inspect(sync_conn)
+            return {col["name"] for col in insp.get_columns("conteneurs")}
+
+        colonnes_existantes = await conn.run_sync(get_columns)
+
+        for nom_col, type_col in NOUVEAUX_CHAMPS:
+            if nom_col not in colonnes_existantes:
+                await conn.execute(
+                    text(f'ALTER TABLE conteneurs ADD COLUMN "{nom_col}" {type_col}')
+                )
+
+
 async def creer_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -78,6 +107,7 @@ async def seeder_monnaies():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await creer_tables()
+    await migrer_conteneurs()
     await seeder_monnaies()
     yield
     await engine.dispose()

@@ -76,6 +76,17 @@ class Conteneur(Base):
     dossier_uuid = Column(Text)
     numero_conteneur = Column(Text)
     dimension = Column(Text)
+    date_sorti_port = Column(Date)
+    nom_transporteur = Column(Text)
+    marque_camion = Column(Text)
+    numero_plaque = Column(Text)
+    nom_chauffeur = Column(Text)
+    numero_chauffeur = Column(Text)
+    lieu_dechargement = Column(Text)
+    date_arriver_lieu_dechargement = Column(Date)
+    date_dechargement = Column(Date)
+    date_depart_retout_port = Column(Date)
+    date_retour_port = Column(Date)
     action = Column(Text)
 
 
