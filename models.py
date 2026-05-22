@@ -65,6 +65,7 @@ class Dossier(Base):
     montant_convenu = Column(Float)
     statut = Column(Text)
     date_creation = Column(Date, server_default=func.current_date())
+    type_bl = Column(Text)
     action = Column(Text)
 
 
@@ -163,6 +164,8 @@ class Depense(Base):
     date_validation = Column(Date)
     validateur_uuid = Column(Text)
     monnaie_uuid = Column(Text)
+    deja_executer = Column(Integer, default=0)
+    dossier_uuid = Column(Text)
     action = Column(Text)
 
 
@@ -182,7 +185,32 @@ class DepenseMarinasTrans(Base):
     monnaie_uuid = Column(Text)
     type_depense = Column(Text)
     origine_uuid = Column(Text)
+    deja_executer = Column(Integer, default=0)
     action = Column(Text)
+
+
+class ScanBl(Base):
+    __tablename__ = "scan_bl"
+
+    uuid = Column(Text)
+    id = Column(Integer)
+    sync = Column(Integer, primary_key=True)
+    dossier_uuid = Column(Text)
+    scan = Column(LargeBinary)
+    page = Column(Integer)
+    nom_fichier = Column(Text)
+
+
+class ScanVoyage(Base):
+    __tablename__ = "scan_voyage"
+
+    uuid = Column(Text)
+    id = Column(Integer)
+    sync = Column(Integer, primary_key=True)
+    dossier_uuid = Column(Text)
+    scan = Column(LargeBinary)
+    page = Column(Integer)
+    nom_fichier = Column(Text)
 
 
 class Camion(Base):

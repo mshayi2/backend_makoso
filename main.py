@@ -12,7 +12,7 @@ from database import engine, Base, AsyncSessionLocal
 from models import (
     Monnaie, Utilisateur, Client, Dossier, Conteneur, DetailConteneur,
     Interchange, DepotArgent, DepotArgentMarinasTrans,
-    Depense, DepenseMarinasTrans, Camion, ChauffeurConvoyeur, Voyage
+    Depense, DepenseMarinasTrans, Camion, ChauffeurConvoyeur, Voyage, ScanBl, ScanVoyage
 )
 
 TABLE_MAP = {
@@ -30,6 +30,8 @@ TABLE_MAP = {
     "camions": Camion,
     "chauffeurs_convoyeurs": ChauffeurConvoyeur,
     "voyages": Voyage,
+    "scan_bl": ScanBl,
+    "scan_voyage": ScanVoyage,
 }
 
 
@@ -156,6 +158,72 @@ async def migrer_conteneurs():
                 )
 
 
+async def migrer_nouvelles_colonnes():
+    async with engine.begin() as conn:
+        def get_columns(sync_conn, table_name):
+            insp = inspect(sync_conn)
+            return {col["name"] for col in insp.get_columns(table_name)}
+
+        def table_exists(sync_conn, table_name):
+            insp = inspect(sync_conn)
+            return table_name in insp.get_table_names()
+
+        # depenses_makoso: deja_executer, dossier_uuid
+        cols_dep_makoso = await conn.run_sync(lambda c: get_columns(c, "depenses_makoso"))
+        if "deja_executer" not in cols_dep_makoso:
+            await conn.execute(text(
+                "ALTER TABLE depenses_makoso ADD COLUMN deja_executer INTEGER DEFAULT 0"
+            ))
+        if "dossier_uuid" not in cols_dep_makoso:
+            await conn.execute(text(
+                "ALTER TABLE depenses_makoso ADD COLUMN dossier_uuid TEXT"
+            ))
+
+        # dossiers: type_bl
+        cols_dossiers = await conn.run_sync(lambda c: get_columns(c, "dossiers"))
+        if "type_bl" not in cols_dossiers:
+            await conn.execute(text(
+                "ALTER TABLE dossiers ADD COLUMN type_bl TEXT"
+            ))
+
+        # depenses_marina_trans: deja_executer
+        cols_dep_marina = await conn.run_sync(lambda c: get_columns(c, "depenses_marina_trans"))
+        if "deja_executer" not in cols_dep_marina:
+            await conn.execute(text(
+                "ALTER TABLE depenses_marina_trans ADD COLUMN deja_executer INTEGER DEFAULT 0"
+            ))
+
+        # scan_bl: créer si absent
+        scan_bl_existe = await conn.run_sync(lambda c: table_exists(c, "scan_bl"))
+        if not scan_bl_existe:
+            await conn.execute(text("""
+                CREATE TABLE scan_bl (
+                    uuid TEXT,
+                    id INTEGER,
+                    sync INTEGER PRIMARY KEY,
+                    dossier_uuid TEXT,
+                    scan BYTEA,
+                    page INTEGER,
+                    nom_fichier TEXT
+                )
+            """))
+
+        # scan_voyage: créer si absent
+        scan_voyage_existe = await conn.run_sync(lambda c: table_exists(c, "scan_voyage"))
+        if not scan_voyage_existe:
+            await conn.execute(text("""
+                CREATE TABLE scan_voyage (
+                    uuid TEXT,
+                    id INTEGER,
+                    sync INTEGER PRIMARY KEY,
+                    dossier_uuid TEXT,
+                    scan BYTEA,
+                    page INTEGER,
+                    nom_fichier TEXT
+                )
+            """))
+
+
 async def creer_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -187,6 +255,7 @@ async def lifespan(app: FastAPI):
     await migrer_voyages()
     await migrer_depot_argent_et_depenses()
     await migrer_conteneurs()
+    await migrer_nouvelles_colonnes()
     await seeder_monnaies()
     yield
     await engine.dispose()
