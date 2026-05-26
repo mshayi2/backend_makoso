@@ -258,3 +258,15 @@ class Voyage(Base):
     chauffeur_uuid = Column(Text)
     convoyeur_uuid = Column(Text)
     action = Column(Text)
+
+
+class Solde(Base):
+    __tablename__ = "solde"
+
+    uuid = Column(Text, primary_key=True)
+    id = Column(Integer)
+    sync = Column(Integer, default=0)
+    monnaie_uuid = Column(Text)
+    montant = Column(Float)
+    date_cloture = Column(Date)
+    nom_company = Column(Text)

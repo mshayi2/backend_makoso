@@ -12,7 +12,7 @@ from database import engine, Base, AsyncSessionLocal
 from models import (
     Monnaie, Utilisateur, Client, Dossier, Conteneur, DetailConteneur,
     Interchange, DepotArgent, DepotArgentMarinasTrans,
-    Depense, DepenseMarinasTrans, Camion, ChauffeurConvoyeur, Voyage, ScanBl, ScanVoyage
+    Depense, DepenseMarinasTrans, Camion, ChauffeurConvoyeur, Voyage, ScanBl, ScanVoyage, Solde
 )
 
 TABLE_MAP = {
@@ -32,6 +32,7 @@ TABLE_MAP = {
     "voyages": Voyage,
     "scan_bl": ScanBl,
     "scan_voyage": ScanVoyage,
+    "solde": Solde,
 }
 
 
@@ -220,6 +221,21 @@ async def migrer_nouvelles_colonnes():
                     scan BYTEA,
                     page INTEGER,
                     nom_fichier TEXT
+                )
+            """))
+
+        # solde: créer si absent
+        solde_existe = await conn.run_sync(lambda c: table_exists(c, "solde"))
+        if not solde_existe:
+            await conn.execute(text("""
+                CREATE TABLE solde (
+                    uuid TEXT PRIMARY KEY,
+                    id INTEGER,
+                    sync INTEGER DEFAULT 0,
+                    monnaie_uuid TEXT,
+                    montant FLOAT,
+                    date_cloture DATE,
+                    nom_company TEXT
                 )
             """))
 
