@@ -6,7 +6,7 @@ from datetime import date, datetime
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import Response
 from pydantic import BaseModel
-from sqlalchemy import select, inspect, func, text, Date as SADate
+from sqlalchemy import select, inspect, func, text, Date as SADate, LargeBinary
 
 from database import engine, Base, AsyncSessionLocal
 from models import (
@@ -334,6 +334,27 @@ def determine_action(sync: int, id_val: int) -> str:
     return ""
 
 
+def normalize_binary_value(value: Any, column_name: str) -> bytes | None:
+    if value is None:
+        return None
+
+    try:
+        if isinstance(value, str):
+            return bytes.fromhex(value)
+        if isinstance(value, (bytes, bytearray, memoryview, list)):
+            return bytes(value)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Valeur binaire invalide pour le champ {column_name}",
+        ) from exc
+
+    raise HTTPException(
+        status_code=400,
+        detail=f"Type invalide pour le champ binaire {column_name}",
+    )
+
+
 @app.post("/post_data")
 async def post_data(request: PostDataRequest) -> List[Dict[str, Any]]:
     model = TABLE_MAP.get(request.table_name)
@@ -374,13 +395,18 @@ async def post_data(request: PostDataRequest) -> List[Dict[str, Any]]:
             insert_data["sync"] = new_sync
             insert_data["id"] = id_val
 
-            # Filtrer uniquement les colonnes du modèle et convertir les dates
+            # Filtrer uniquement les colonnes du modèle et convertir les types spéciaux
             mapper = inspect(model).mapper
             valid_cols = {c.key for c in mapper.column_attrs}
             date_cols = {
                 c.key
                 for c in mapper.columns
                 if isinstance(c.type, SADate)
+            }
+            binary_cols = {
+                c.key
+                for c in mapper.columns
+                if isinstance(c.type, LargeBinary)
             }
             insert_data = {k: v for k, v in insert_data.items() if k in valid_cols}
             for col in date_cols:
@@ -392,6 +418,9 @@ async def post_data(request: PostDataRequest) -> List[Dict[str, Any]]:
                         insert_data[col] = None
                 elif not val:
                     insert_data[col] = None
+            for col in binary_cols:
+                if col in insert_data:
+                    insert_data[col] = normalize_binary_value(insert_data[col], col)
 
             instance = model(**insert_data)
             session.add(instance)
