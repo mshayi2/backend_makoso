@@ -325,12 +325,12 @@ async def get_data(request: GetDataRequest) -> Dict[str, List[Dict[str, Any]]]:
 
 
 def determine_action(sync: int, id_val: int) -> str:
-    if sync == 0:
+    if id_val < 0:
+        return f"D|{abs(id_val)}|{abs(sync)}"
+    elif sync == 0:
         return "I"
     elif id_val > 0 and sync < 0:
         return f"U|{abs(sync)}"
-    elif id_val < 0 and sync < 0:
-        return f"D|{abs(id_val)}|{abs(sync)}"
     return ""
 
 
