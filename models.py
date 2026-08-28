@@ -65,6 +65,7 @@ class Dossier(Base):
     montant_convenu = Column(Float)
     statut = Column(Text)
     date_creation = Column(Date, server_default=func.current_date())
+    date_reception_bl = Column(Date)
     type_bl = Column(Text)
     action = Column(Text)
 
@@ -78,6 +79,8 @@ class Conteneur(Base):
     dossier_uuid = Column(Text)
     numero_conteneur = Column(Text)
     dimension = Column(Text)
+    poids = Column(Float)
+    nature_marchandise = Column(Text)
     date_sorti_port = Column(Date)
     nom_transporteur = Column(Text)
     marque_camion = Column(Text)
@@ -257,6 +260,16 @@ class Voyage(Base):
     camion_uuid = Column(Text)
     chauffeur_uuid = Column(Text)
     convoyeur_uuid = Column(Text)
+    dimension_conteneur = Column(Text)
+    poids_conteneur = Column(Float)
+    nature_marchandise = Column(Text)
+    date_depart_origine = Column(Date)
+    date_arriver_destination = Column(Date)
+    date_depart_retour = Column(Date)
+    date_arriver_retour = Column(Date)
+    nature_marchandise_retour = Column(Text)
+    nom_client_retour = Column(Text)
+    montant_convenu_retour = Column(Float)
     action = Column(Text)
 
 

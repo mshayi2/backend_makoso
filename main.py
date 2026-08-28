@@ -70,6 +70,20 @@ async def migrer_clients():
 
 
 async def migrer_voyages():
+    nouveaux_champs = [
+        ("client_uuid", "TEXT"),
+        ("dimension_conteneur", "TEXT"),
+        ("poids_conteneur", "FLOAT"),
+        ("nature_marchandise", "TEXT"),
+        ("date_depart_origine", "DATE"),
+        ("date_arriver_destination", "DATE"),
+        ("date_depart_retour", "DATE"),
+        ("date_arriver_retour", "DATE"),
+        ("nature_marchandise_retour", "TEXT"),
+        ("nom_client_retour", "TEXT"),
+        ("montant_convenu_retour", "FLOAT"),
+    ]
+
     async with engine.begin() as conn:
         def get_columns(sync_conn):
             insp = inspect(sync_conn)
@@ -77,8 +91,11 @@ async def migrer_voyages():
 
         colonnes_existantes = await conn.run_sync(get_columns)
 
-        if "client_uuid" not in colonnes_existantes:
-            await conn.execute(text("ALTER TABLE voyages ADD COLUMN client_uuid TEXT"))
+        for nom_col, type_col in nouveaux_champs:
+            if nom_col not in colonnes_existantes:
+                await conn.execute(
+                    text(f'ALTER TABLE voyages ADD COLUMN "{nom_col}" {type_col}')
+                )
 
 
 async def migrer_depot_argent_et_depenses():
@@ -132,6 +149,8 @@ async def migrer_depot_argent_et_depenses():
 
 async def migrer_conteneurs():
     NOUVEAUX_CHAMPS = [
+        ("poids", "FLOAT"),
+        ("nature_marchandise", "TEXT"),
         ("date_sorti_port", "DATE"),
         ("nom_transporteur", "TEXT"),
         ("marque_camion", "TEXT"),
@@ -180,11 +199,15 @@ async def migrer_nouvelles_colonnes():
                 "ALTER TABLE depenses_makoso ADD COLUMN dossier_uuid TEXT"
             ))
 
-        # dossiers: type_bl
+        # dossiers: type_bl, date_reception_bl
         cols_dossiers = await conn.run_sync(lambda c: get_columns(c, "dossiers"))
         if "type_bl" not in cols_dossiers:
             await conn.execute(text(
                 "ALTER TABLE dossiers ADD COLUMN type_bl TEXT"
+            ))
+        if "date_reception_bl" not in cols_dossiers:
+            await conn.execute(text(
+                "ALTER TABLE dossiers ADD COLUMN date_reception_bl DATE"
             ))
 
         # depenses_marina_trans: deja_executer
