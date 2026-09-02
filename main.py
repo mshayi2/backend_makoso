@@ -1,10 +1,12 @@
 import uuid as uuid_lib
+import logging
+import secrets
 from contextlib import asynccontextmanager
 from typing import Dict, List, Any
 from datetime import date, datetime
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.responses import Response
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select, inspect, func, text, Date as SADate, LargeBinary
 
@@ -302,10 +304,52 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Makoso API", lifespan=lifespan)
 
+logger = logging.getLogger("uvicorn.error")
+ROUTES_PUBLIQUES = {"/", "/docs", "/docs/oauth2-redirect", "/openapi.json", "/redoc"}
+API_KEY = "mQO-MgS8ql6XlW-6Dyx02dice5wR1_wQrqx9_x62X-TIPWjRySsgmfpsF8lwz5l-"
+
+
+@app.middleware("http")
+async def detecter_client_mobile(request: Request, call_next):
+    client_type = request.headers.get("X-Client-Type", "inconnu").lower()
+    request.state.est_flutter = client_type == "flutter"
+
+    if request.url.path not in ROUTES_PUBLIQUES and request.method != "OPTIONS":
+        authorization = request.headers.get("Authorization", "")
+        scheme, separator, token = authorization.partition(" ")
+
+        if (
+            separator != " "
+            or scheme.lower() != "bearer"
+            or not secrets.compare_digest(token, API_KEY)
+        ):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Clé d'autorisation absente ou invalide"},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    if request.state.est_flutter:
+        logger.info(
+            "Appel Flutter: %s %s | version=%s | appareil=%s | ip=%s",
+            request.method,
+            request.url.path,
+            request.headers.get("X-App-Version", "inconnue"),
+            request.headers.get("X-Device-ID", "inconnu"),
+            request.client.host if request.client else "inconnue",
+        )
+
+    response = await call_next(request)
+    response.headers["X-Client-Detected"] = "flutter" if request.state.est_flutter else "unknown"
+    return response
+
 
 @app.get("/")
-async def root():
-    return {"message": "Makoso API opérationnelle"}
+async def root(request: Request):
+    return {
+        "message": "Makoso API opérationnelle",
+        "client": "flutter" if request.state.est_flutter else "inconnu",
+    }
 
 
 def row_to_dict(row) -> Dict[str, Any]:
